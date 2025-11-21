@@ -37,7 +37,11 @@ function Login() {
         <p className="mb-8 text-center text-zinc-400">
           Sign in to track time on your Linear issues.
           <br />
-          <span className="text-xs text-zinc-500">(Restricted to @hypercash.com.br)</span>
+          <span className="text-xs text-zinc-500">
+            {import.meta.env.VITE_ALLOWED_EMAIL_DOMAIN
+              ? `(Restricted to ${import.meta.env.VITE_ALLOWED_EMAIL_DOMAIN})`
+              : '(Open Access)'}
+          </span>
         </p>
         <button
           onClick={handleLogin}

@@ -1,11 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { fetchIssues, LinearIssue } from '../../utils/linear'
 import { startTimer } from '../../utils/timer'
 import { useAuth } from '../../context/AuthContext'
 import { SettingsModal } from '../../components/SettingsModal'
-import { Settings, Play, CheckCircle2, Circle } from 'lucide-react'
+import { Settings, Play, CheckCircle2, Circle, Clock } from 'lucide-react'
+import { loadEstimates, saveEstimates } from '../../utils/estimates'
 
 export const Route = createFileRoute('/_auth/')({
   component: Dashboard,
@@ -13,6 +14,7 @@ export const Route = createFileRoute('/_auth/')({
 
 function Dashboard() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [estimates, setEstimates] = useState<Record<string, number>>({})
   const { user } = useAuth()
 
   const { data: issues, isLoading, error } = useQuery({
@@ -20,6 +22,25 @@ function Dashboard() {
     queryFn: fetchIssues,
     retry: false,
   })
+
+  // Load estimates from Firebase on mount
+  useEffect(() => {
+    if (user) {
+      loadEstimates(user.uid).then(setEstimates)
+    }
+  }, [user])
+
+  // Save estimates to Firebase when they change
+  useEffect(() => {
+    if (user && Object.keys(estimates).length > 0) {
+      saveEstimates(user.uid, estimates)
+    }
+  }, [estimates, user])
+
+  // Calculate total estimated hours
+  const totalHours = useMemo(() => {
+    return Object.values(estimates).reduce((sum, estimate) => sum + estimate, 0)
+  }, [estimates])
 
   // Group issues by Cycle
   const issuesByCycle = issues?.reduce((acc, issue) => {
@@ -39,7 +60,15 @@ function Dashboard() {
   return (
     <div className="h-full">
       <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-zinc-50">My Issues</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold text-zinc-50">My Issues</h1>
+          <div className="flex items-center gap-2 rounded-md border border-indigo-900/50 bg-indigo-900/20 px-3 py-1.5">
+            <Clock className="h-4 w-4 text-indigo-400" />
+            <span className="text-sm font-medium text-indigo-300">
+              {totalHours}h total
+            </span>
+          </div>
+        </div>
         <button
           onClick={() => setIsSettingsOpen(true)}
           className="flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50"
@@ -101,17 +130,35 @@ function Dashboard() {
                       </div>
                     </div>
                   </div>
-                  <button
-                    className="flex items-center gap-2 rounded-md bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 opacity-0 transition-opacity hover:bg-zinc-700 hover:text-zinc-50 group-hover:opacity-100"
-                    onClick={() => {
-                      if (user) {
-                        startTimer(user.uid, issue)
-                      }
-                    }}
-                  >
-                    <Play className="h-3 w-3" />
-                    Start
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-zinc-500" />
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        placeholder="0"
+                        value={estimates[issue.id] || ''}
+                        onChange={(e) => {
+                          const value = parseFloat(e.target.value) || 0
+                          setEstimates(prev => ({ ...prev, [issue.id]: value }))
+                        }}
+                        className="w-16 rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-sm text-zinc-300 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      />
+                      <span className="text-xs text-zinc-500">h</span>
+                    </div>
+                    <button
+                      className="flex items-center gap-2 rounded-md bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 opacity-0 transition-opacity hover:bg-zinc-700 hover:text-zinc-50 group-hover:opacity-100"
+                      onClick={() => {
+                        if (user) {
+                          startTimer(user.uid, issue)
+                        }
+                      }}
+                    >
+                      <Play className="h-3 w-3" />
+                      Start
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

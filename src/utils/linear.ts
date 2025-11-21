@@ -3,7 +3,7 @@ import { GraphQLClient, gql } from 'graphql-request'
 const LINEAR_ENDPOINT = 'https://api.linear.app/graphql'
 
 export const getLinearClient = () => {
-  const token = localStorage.getItem('linear_api_token')
+  const token = localStorage.getItem('linear_api_token') || import.meta.env.VITE_LINEAR_API_KEY
   if (!token) return null
 
   return new GraphQLClient(LINEAR_ENDPOINT, {

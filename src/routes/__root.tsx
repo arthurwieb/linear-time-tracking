@@ -1,12 +1,15 @@
 import { HeadContent, Scripts, createRootRoute, Outlet } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import Header from '../components/Header'
 import { AuthProvider } from '../context/AuthContext'
 import { ActiveTimer } from '../components/ActiveTimer'
 
 import appCss from '../styles.css?url'
+
+const queryClient = new QueryClient()
 
 export const Route = createRootRoute({
   head: () => ({
@@ -36,10 +39,12 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <AuthProvider>
-      <Outlet />
-      <ActiveTimer />
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <Outlet />
+        <ActiveTimer />
+      </AuthProvider>
+    </QueryClientProvider>
   )
 }
 

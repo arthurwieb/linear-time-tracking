@@ -12,7 +12,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   useEffect(() => {
     const storedToken = localStorage.getItem('linear_api_token')
-    if (storedToken) setToken(storedToken)
+    if (storedToken) {
+      setToken(storedToken)
+    } else if (import.meta.env.VITE_LINEAR_API_KEY) {
+      setToken(import.meta.env.VITE_LINEAR_API_KEY)
+    }
   }, [isOpen])
 
   const handleSave = () => {

@@ -18,10 +18,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         // Domain restriction check
-        if (!currentUser.email?.endsWith("@hypercash.com.br")) {
+        const allowedDomain = import.meta.env.VITE_ALLOWED_EMAIL_DOMAIN
+        if (allowedDomain && !currentUser.email?.endsWith(allowedDomain)) {
           await signOut(auth);
           setUser(null);
-          alert("Access restricted to @hypercash.com.br emails.");
+          alert(`Access restricted to ${allowedDomain} emails.`);
         } else {
           setUser(currentUser);
         }
