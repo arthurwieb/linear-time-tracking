@@ -61,3 +61,47 @@ export const updateEstimate = async (timerId: string, estimate: string) => {
     estimate,
   })
 }
+
+/**
+ * Calculate total time spent (in hours) for each issue from time logs
+ */
+export const getTimeSpentPerIssue = async (
+  userId: string
+): Promise<Record<string, number>> => {
+  try {
+    const logsQuery = query(
+      collection(db, 'time_logs'),
+      where('userId', '==', userId)
+    )
+    const snapshot = await getDocs(logsQuery)
+
+    const timeSpent: Record<string, number> = {}
+
+    snapshot.docs.forEach((doc) => {
+      const log = doc.data() as Omit<TimeLog, 'id'>
+
+      // Only count completed logs (with endTime)
+      if (log.endTime && log.startTime) {
+        const start = log.startTime instanceof Timestamp
+          ? log.startTime.toDate()
+          : new Date(log.startTime)
+        const end = log.endTime instanceof Timestamp
+          ? log.endTime.toDate()
+          : new Date(log.endTime)
+
+        const durationMs = end.getTime() - start.getTime()
+        const durationHours = durationMs / (1000 * 60 * 60)
+
+        if (!timeSpent[log.issueId]) {
+          timeSpent[log.issueId] = 0
+        }
+        timeSpent[log.issueId] += durationHours
+      }
+    })
+
+    return timeSpent
+  } catch (error) {
+    console.error('Error calculating time spent:', error)
+    return {}
+  }
+}

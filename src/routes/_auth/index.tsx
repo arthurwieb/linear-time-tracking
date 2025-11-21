@@ -7,6 +7,8 @@ import { useAuth } from '../../context/AuthContext'
 import { SettingsModal } from '../../components/SettingsModal'
 import { Settings, Play, CheckCircle2, Circle, Clock } from 'lucide-react'
 import { loadEstimates, saveEstimates } from '../../utils/estimates'
+import { collection, query, where, onSnapshot } from 'firebase/firestore'
+import { db } from '../../utils/firebase'
 
 export const Route = createFileRoute('/_auth/')({
   component: Dashboard,
@@ -15,6 +17,7 @@ export const Route = createFileRoute('/_auth/')({
 function Dashboard() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [estimates, setEstimates] = useState<Record<string, number>>({})
+  const [timeSpent, setTimeSpent] = useState<Record<string, number>>({})
   const { user } = useAuth()
 
   const { data: issues, isLoading, error } = useQuery({
@@ -30,6 +33,46 @@ function Dashboard() {
     }
   }, [user])
 
+  // Real-time listener for time spent updates
+  useEffect(() => {
+    if (!user) {
+      setTimeSpent({})
+      return
+    }
+
+    // Set up real-time listener for time logs
+    const logsQuery = query(
+      collection(db, 'time_logs'),
+      where('userId', '==', user.uid)
+    )
+
+    const unsubscribe = onSnapshot(logsQuery, (snapshot) => {
+      const timeSpentData: Record<string, number> = {}
+
+      snapshot.docs.forEach((doc) => {
+        const log = doc.data()
+
+        // Only count completed logs (with endTime)
+        if (log.endTime && log.startTime) {
+          const start = log.startTime.toDate()
+          const end = log.endTime.toDate()
+
+          const durationMs = end.getTime() - start.getTime()
+          const durationHours = durationMs / (1000 * 60 * 60)
+
+          if (!timeSpentData[log.issueId]) {
+            timeSpentData[log.issueId] = 0
+          }
+          timeSpentData[log.issueId] += durationHours
+        }
+      })
+
+      setTimeSpent(timeSpentData)
+    })
+
+    return () => unsubscribe()
+  }, [user])
+
   // Save estimates to Firebase when they change
   useEffect(() => {
     if (user && Object.keys(estimates).length > 0) {
@@ -41,6 +84,20 @@ function Dashboard() {
   const totalHours = useMemo(() => {
     return Object.values(estimates).reduce((sum, estimate) => sum + estimate, 0)
   }, [estimates])
+
+  // Format time spent in hours and minutes
+  const formatTimeSpent = (hours: number) => {
+    const h = Math.floor(hours)
+    const m = Math.round((hours - h) * 60)
+
+    if (h === 0) {
+      return `${m}m`
+    } else if (m === 0) {
+      return `${h}h`
+    } else {
+      return `${h}h ${m}m`
+    }
+  }
 
   // Group issues by Cycle
   const issuesByCycle = issues?.reduce((acc, issue) => {
@@ -144,9 +201,17 @@ function Dashboard() {
                           setEstimates(prev => ({ ...prev, [issue.id]: value }))
                         }}
                         className="w-16 rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-sm text-zinc-300 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        title="Estimate"
                       />
                       <span className="text-xs text-zinc-500">h</span>
                     </div>
+                    {timeSpent[issue.id] && (
+                      <div className="flex items-center gap-1 rounded border border-amber-900/50 bg-amber-900/20 px-2 py-1">
+                        <span className="text-xs text-amber-400">
+                          {formatTimeSpent(timeSpent[issue.id])} spent
+                        </span>
+                      </div>
+                    )}
                     <button
                       className="flex items-center gap-2 rounded-md bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 opacity-0 transition-opacity hover:bg-zinc-700 hover:text-zinc-50 group-hover:opacity-100"
                       onClick={() => {
