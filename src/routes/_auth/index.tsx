@@ -188,6 +188,29 @@ function Dashboard() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
+                    {issue.assignee && (
+                      <div className="flex items-center gap-2" title={issue.assignee.name}>
+                        {issue.assignee.avatarUrl ? (
+                          <img
+                            src={issue.assignee.avatarUrl}
+                            alt={issue.assignee.name}
+                            className="h-6 w-6 rounded-full border border-zinc-800"
+                          />
+                        ) : (
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full border border-zinc-800 bg-zinc-800 text-xs font-medium text-zinc-400">
+                            {issue.assignee.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <span className="text-xs text-zinc-400">{issue.assignee.name}</span>
+                      </div>
+                    )}
+                    {!issue.assignee && (
+                      <div className="flex items-center gap-2" title="Unassigned">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-full border border-zinc-800 bg-zinc-900 text-zinc-600 border-dashed">
+                          <span className="text-xs">?</span>
+                        </div>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-zinc-500" />
                       <input

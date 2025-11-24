@@ -33,6 +33,7 @@ export const ISSUES_QUERY = gql`
         assignee {
           id
           name
+          avatarUrl
         }
       }
     }
@@ -56,6 +57,7 @@ export interface LinearIssue {
   assignee?: {
     id: string
     name: string
+    avatarUrl?: string
   }
 }
 
