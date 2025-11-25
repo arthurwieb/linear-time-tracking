@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import Header from '../components/Header'
 import { AuthProvider } from '../context/AuthContext'
 import { ActiveTimer } from '../components/ActiveTimer'
+import { TimerProvider } from '../context/TimerContext'
 
 import appCss from '../styles.css?url'
 
@@ -41,8 +42,10 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Outlet />
-        <ActiveTimer />
+        <TimerProvider>
+          <Outlet />
+          <ActiveTimer />
+        </TimerProvider>
       </AuthProvider>
     </QueryClientProvider>
   )

@@ -1,42 +1,23 @@
 import { useEffect, useState } from 'react'
-import { collection, query, where, onSnapshot, Timestamp } from 'firebase/firestore'
-import { db } from '../utils/firebase'
-import { useAuth } from '../context/AuthContext'
-import { TimeLog, stopTimer, updateEstimate } from '../utils/timer'
+import { Timestamp } from 'firebase/firestore'
+import { useTimer } from '../context/TimerContext'
+import { stopTimer, updateEstimate } from '../utils/timer'
 import { StopCircle, Clock } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 export function ActiveTimer() {
-  const { user } = useAuth()
-  const [activeTimer, setActiveTimer] = useState<TimeLog | null>(null)
+  const { activeTimer } = useTimer()
   const [elapsed, setElapsed] = useState(0)
   const [estimateInput, setEstimateInput] = useState('')
 
   useEffect(() => {
-    if (!user) {
-      setActiveTimer(null)
-      return
+    if (activeTimer?.estimate) {
+      setEstimateInput(activeTimer.estimate)
+    } else {
+      setEstimateInput('')
     }
-
-    const q = query(
-      collection(db, 'time_logs'),
-      where('userId', '==', user.uid),
-      where('endTime', '==', null)
-    )
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        const doc = snapshot.docs[0]
-        const data = doc.data()
-        setActiveTimer({ id: doc.id, ...data } as TimeLog)
-        if (data.estimate) setEstimateInput(data.estimate)
-      } else {
-        setActiveTimer(null)
-        setEstimateInput('')
-      }
-    })
-
-    return () => unsubscribe()
-  }, [user])
+  }, [activeTimer])
 
   useEffect(() => {
     if (!activeTimer) {
@@ -86,28 +67,18 @@ export function ActiveTimer() {
             </div>
             <div className="text-2xl font-mono font-bold text-zinc-50">{formatTime(elapsed)}</div>
           </div>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => stopTimer(activeTimer.id)}
+            className="ml-4"
+          >
+            <StopCircle className="mr-2 h-4 w-4" />
+            Stop
+          </Button>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex flex-col items-end">
-            <label className="text-xs text-zinc-500">Estimate</label>
-            <input
-              type="text"
-              value={estimateInput}
-              onChange={(e) => setEstimateInput(e.target.value)}
-              onBlur={handleEstimateBlur}
-              placeholder="e.g. 25m"
-              className="w-24 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-right text-sm text-zinc-300 focus:border-indigo-500 focus:outline-none"
-            />
-          </div>
-          <button
-            onClick={() => stopTimer(activeTimer.id)}
-            className="flex items-center gap-2 rounded-md bg-red-500/10 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20"
-          >
-            <StopCircle className="h-4 w-4" />
-            Stop
-          </button>
-        </div>
+
       </div>
     </div>
   )

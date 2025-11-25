@@ -26,7 +26,7 @@ export const startTimer = async (
   userId: string,
   issue: { id: string; title: string; identifier: string }
 ) => {
-  // 1. Stop any currently active timer for this user
+  // 1. Check if there is already an active timer
   const activeQuery = query(
     collection(db, 'time_logs'),
     where('userId', '==', userId),
@@ -34,10 +34,9 @@ export const startTimer = async (
   )
   const snapshot = await getDocs(activeQuery)
 
-  const batchPromises = snapshot.docs.map((d) =>
-    updateDoc(doc(db, 'time_logs', d.id), { endTime: serverTimestamp() })
-  )
-  await Promise.all(batchPromises)
+  if (!snapshot.empty) {
+    throw new Error('A timer is already running. Please stop it first.')
+  }
 
   // 2. Start new timer
   await addDoc(collection(db, 'time_logs'), {

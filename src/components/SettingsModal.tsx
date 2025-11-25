@@ -6,6 +6,11 @@ interface SettingsModalProps {
   onClose: () => void
 }
 
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [token, setToken] = useState('')
   const queryClient = useQueryClient()
@@ -25,42 +30,37 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     onClose()
   }
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-lg border border-zinc-800 bg-zinc-900 p-6 shadow-xl">
-        <h2 className="mb-4 text-xl font-bold text-zinc-50">Linear Settings</h2>
-        <div className="mb-4">
-          <label className="mb-2 block text-sm font-medium text-zinc-400">
-            Personal Access Token
-          </label>
-          <input
-            type="password"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-50 focus:border-indigo-500 focus:outline-none"
-            placeholder="lin_api_..."
-          />
-          <p className="mt-2 text-xs text-zinc-500">
-            Generate a token in your Linear Settings &gt; API.
-          </p>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-800 text-zinc-50">
+        <DialogHeader>
+          <DialogTitle className="text-zinc-50">Linear Settings</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="token" className="text-zinc-400">Personal Access Token</Label>
+            <Input
+              id="token"
+              type="password"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              className="bg-zinc-950 border-zinc-700 text-zinc-50 focus-visible:ring-indigo-500"
+              placeholder="lin_api_..."
+            />
+            <p className="text-xs text-zinc-500">
+              Generate a token in your Linear Settings &gt; API.
+            </p>
+          </div>
         </div>
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="rounded-md px-4 py-2 text-sm font-medium text-zinc-400 hover:text-zinc-50"
-          >
+        <DialogFooter className="sm:justify-end gap-2">
+          <Button variant="ghost" onClick={onClose} className="text-zinc-400 hover:text-zinc-50 hover:bg-zinc-800">
             Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-          >
+          </Button>
+          <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white">
             Save Token
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

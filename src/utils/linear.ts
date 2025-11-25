@@ -40,6 +40,19 @@ export const ISSUES_QUERY = gql`
   }
 `
 
+export const CYCLES_QUERY = gql`
+  query Cycles {
+    cycles(first: 20) {
+      nodes {
+        id
+        number
+        startsAt
+        endsAt
+      }
+    }
+  }
+`
+
 export interface LinearIssue {
   id: string
   title: string
@@ -61,10 +74,25 @@ export interface LinearIssue {
   }
 }
 
+export interface LinearCycle {
+  id: string
+  number: number
+  startsAt: string
+  endsAt: string
+}
+
 export const fetchIssues = async (): Promise<LinearIssue[]> => {
   const client = getLinearClient()
   if (!client) throw new Error('No API Token found')
 
   const data = await client.request<{ issues: { nodes: LinearIssue[] } }>(ISSUES_QUERY)
   return data.issues.nodes
+}
+
+export const fetchCycles = async (): Promise<LinearCycle[]> => {
+  const client = getLinearClient()
+  if (!client) throw new Error('No API Token found')
+
+  const data = await client.request<{ cycles: { nodes: LinearCycle[] } }>(CYCLES_QUERY)
+  return data.cycles.nodes
 }
