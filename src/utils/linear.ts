@@ -53,6 +53,20 @@ export const CYCLES_QUERY = gql`
   }
 `
 
+export const USERS_QUERY = gql`
+  query Users {
+    users {
+      nodes {
+        id
+        name
+        email
+        avatarUrl
+        active
+      }
+    }
+  }
+`
+
 export interface LinearIssue {
   id: string
   title: string
@@ -81,6 +95,14 @@ export interface LinearCycle {
   endsAt: string
 }
 
+export interface LinearUser {
+  id: string
+  name: string
+  email: string
+  avatarUrl?: string
+  active: boolean
+}
+
 export const fetchIssues = async (): Promise<LinearIssue[]> => {
   const client = getLinearClient()
   if (!client) throw new Error('No API Token found')
@@ -95,4 +117,12 @@ export const fetchCycles = async (): Promise<LinearCycle[]> => {
 
   const data = await client.request<{ cycles: { nodes: LinearCycle[] } }>(CYCLES_QUERY)
   return data.cycles.nodes
+}
+
+export const fetchUsers = async (): Promise<LinearUser[]> => {
+  const client = getLinearClient()
+  if (!client) throw new Error('No API Token found')
+
+  const data = await client.request<{ users: { nodes: LinearUser[] } }>(USERS_QUERY)
+  return data.users.nodes.filter(user => user.active)
 }

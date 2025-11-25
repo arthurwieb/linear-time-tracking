@@ -1,15 +1,16 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useState, useMemo, useEffect } from 'react'
-import { fetchIssues, fetchCycles, LinearIssue, LinearCycle } from '../../utils/linear'
+import { fetchIssues, fetchCycles, fetchUsers, LinearIssue, LinearCycle } from '../../utils/linear'
 import { startTimer, stopTimer } from '../../utils/timer'
 import { useAuth } from '../../context/AuthContext'
 import { useTimer } from '../../context/TimerContext'
 import { SettingsModal } from '../../components/SettingsModal'
-import { Settings, Play, CheckCircle2, Circle, Clock, StopCircle } from 'lucide-react'
+import { Settings, Play, CheckCircle2, Circle, Clock, StopCircle, Users, LogOutIcon } from 'lucide-react'
 import { loadEstimates, saveEstimates } from '../../utils/estimates'
 import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import { db } from '../../utils/firebase'
+import { Button } from '@/components/ui/button'
 
 export const Route = createFileRoute('/_auth/')({
   component: Dashboard,
@@ -19,7 +20,8 @@ function Dashboard() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [estimates, setEstimates] = useState<Record<string, number>>({})
   const [timeSpent, setTimeSpent] = useState<Record<string, number>>({})
-  const { user } = useAuth()
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set())
+  const { user, logout } = useAuth()
   const { activeTimer } = useTimer()
 
   const { data: issues, isLoading, error } = useQuery({
@@ -31,6 +33,12 @@ function Dashboard() {
   const { data: cycles } = useQuery({
     queryKey: ['cycles'],
     queryFn: fetchCycles,
+    retry: false,
+  })
+
+  const { data: users } = useQuery({
+    queryKey: ['users'],
+    queryFn: fetchUsers,
     retry: false,
   })
 
@@ -124,6 +132,27 @@ function Dashboard() {
     return { current, next }
   }, [cycles])
 
+  // Toggle user filter
+  const toggleUserFilter = (userId: string) => {
+    setSelectedUserIds(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(userId)) {
+        newSet.delete(userId)
+      } else {
+        newSet.add(userId)
+      }
+      return newSet
+    })
+  }
+
+  // Filter issues by selected users
+  const filterIssuesByUser = (issueList: LinearIssue[]) => {
+    if (selectedUserIds.size === 0) return issueList
+    return issueList.filter(issue =>
+      issue.assignee && selectedUserIds.has(issue.assignee.id)
+    )
+  }
+
   // Group issues
   const { currentCycleIssues, nextCycleIssues, backlogIssues } = useMemo(() => {
     if (!issues) return { currentCycleIssues: [], nextCycleIssues: [], backlogIssues: [] }
@@ -142,8 +171,25 @@ function Dashboard() {
       }
     }
 
-    return { currentCycleIssues: current, nextCycleIssues: next, backlogIssues: backlog }
-  }, [issues, sortedCyclesData])
+    return {
+      currentCycleIssues: filterIssuesByUser(current),
+      nextCycleIssues: filterIssuesByUser(next),
+      backlogIssues: filterIssuesByUser(backlog)
+    }
+  }, [issues, sortedCyclesData, selectedUserIds])
+
+  // Calculate total hours for each section
+  const currentCycleHours = useMemo(() => {
+    return currentCycleIssues.reduce((sum, issue) => sum + (estimates[issue.id] || 0), 0)
+  }, [currentCycleIssues, estimates])
+
+  const nextCycleHours = useMemo(() => {
+    return nextCycleIssues.reduce((sum, issue) => sum + (estimates[issue.id] || 0), 0)
+  }, [nextCycleIssues, estimates])
+
+  const backlogHours = useMemo(() => {
+    return backlogIssues.reduce((sum, issue) => sum + (estimates[issue.id] || 0), 0)
+  }, [backlogIssues, estimates])
 
   return (
     <div className="h-full">
@@ -157,14 +203,62 @@ function Dashboard() {
             </span>
           </div>
         </div>
-        <button
-          onClick={() => setIsSettingsOpen(true)}
+        <Button
+          onClick={logout}
           className="flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50"
         >
-          <Settings className="h-4 w-4" />
-          Settings
-        </button>
+          <LogOutIcon className="h-4 w-4" />
+          Logout
+        </Button>
+
       </div>
+
+      {/* User Filter */}
+      {users && users.length > 0 && (
+        <div className="mb-6 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
+          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-zinc-400">
+            <Users className="h-4 w-4" />
+            Filter by Team Member
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {users.map((teamUser) => {
+              const isSelected = selectedUserIds.has(teamUser.id)
+              return (
+                <button
+                  key={teamUser.id}
+                  onClick={() => toggleUserFilter(teamUser.id)}
+                  className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-all ${
+                    isSelected
+                      ? 'border-indigo-500 bg-indigo-500/20 text-indigo-300'
+                      : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-zinc-600 hover:bg-zinc-700'
+                  }`}
+                >
+                  {teamUser.avatarUrl ? (
+                    <img
+                      src={teamUser.avatarUrl}
+                      alt={teamUser.name}
+                      className="h-5 w-5 rounded-full"
+                    />
+                  ) : (
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-700 text-xs font-medium text-zinc-300">
+                      {teamUser.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <span>{teamUser.name}</span>
+                </button>
+              )
+            })}
+          </div>
+          {selectedUserIds.size > 0 && (
+            <button
+              onClick={() => setSelectedUserIds(new Set())}
+              className="mt-3 text-xs text-indigo-400 hover:text-indigo-300 underline"
+            >
+              Clear filter ({selectedUserIds.size} selected)
+            </button>
+          )}
+        </div>
+      )}
 
       {isLoading && <div className="text-zinc-400">Loading issues...</div>}
 
@@ -203,8 +297,16 @@ function Dashboard() {
                   </p>
                 </div>
               </div>
-              <div className="rounded-full bg-indigo-500/20 px-3 py-1 text-xs font-medium text-indigo-300">
-                {currentCycleIssues.length} issues
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 rounded-md border border-indigo-900/50 bg-indigo-900/20 px-3 py-1.5">
+                  <Clock className="h-4 w-4 text-indigo-400" />
+                  <span className="text-sm font-medium text-indigo-300">
+                    {currentCycleHours}h
+                  </span>
+                </div>
+                <div className="rounded-full bg-indigo-500/20 px-3 py-1 text-xs font-medium text-indigo-300">
+                  {currentCycleIssues.length} issues
+                </div>
               </div>
             </div>
 
@@ -332,10 +434,18 @@ function Dashboard() {
         {/* Backlog / Other Issues */}
         {backlogIssues.length > 0 && (
           <div>
-            <h3 className="mb-4 flex items-center gap-2 text-sm font-medium uppercase tracking-wider text-zinc-500">
-              <Circle className="h-4 w-4" />
-              Backlog & Other Cycles
-            </h3>
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-sm font-medium uppercase tracking-wider text-zinc-500">
+                <Circle className="h-4 w-4" />
+                Backlog & Other Cycles
+              </h3>
+              <div className="flex items-center gap-2 rounded-md border border-zinc-700 bg-zinc-800/50 px-3 py-1.5">
+                <Clock className="h-4 w-4 text-zinc-400" />
+                <span className="text-sm font-medium text-zinc-300">
+                  {backlogHours}h
+                </span>
+              </div>
+            </div>
             <div className="space-y-2 pl-2 border-l-2 border-zinc-800">
               {backlogIssues.map((issue) => (
                 <div
@@ -455,10 +565,18 @@ function Dashboard() {
         {/* Next Cycle */}
         {sortedCyclesData.next && (
           <div className="opacity-75 hover:opacity-100 transition-opacity">
-            <h3 className="mb-4 flex items-center gap-2 text-sm font-medium uppercase tracking-wider text-zinc-500">
-              <Clock className="h-4 w-4" />
-              Next Cycle {sortedCyclesData.next.number}
-            </h3>
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-sm font-medium uppercase tracking-wider text-zinc-500">
+                <Clock className="h-4 w-4" />
+                Next Cycle {sortedCyclesData.next.number}
+              </h3>
+              <div className="flex items-center gap-2 rounded-md border border-zinc-700 bg-zinc-800/50 px-3 py-1.5">
+                <Clock className="h-4 w-4 text-zinc-400" />
+                <span className="text-sm font-medium text-zinc-300">
+                  {nextCycleHours}h
+                </span>
+              </div>
+            </div>
             <div className="space-y-2 bg-zinc-900/30 p-4 rounded-lg border border-zinc-800/50 border-dashed">
               {nextCycleIssues.map((issue) => (
                 <div

@@ -29,7 +29,7 @@ function AuthLayout() {
   return (
     <div className="flex h-screen bg-zinc-950 text-zinc-50">
       {/* Sidebar will go here */}
-      <aside className="w-64 border-r border-zinc-800 bg-zinc-900 p-4">
+      <aside className="w-64 border-r hidden border-zinc-800 bg-zinc-900 p-4">
         <div className="mb-8 font-bold">Linear Time</div>
         <nav>
           {/* Navigation links */}
