@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "time-track-app-hypercash"
-  }
+    "default": "time-track-app-hypercash",
+    "teste": "time-track-app-hypercash"
+  },
+  "targets": {},
+  "etags": {}
 }
